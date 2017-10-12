@@ -56,30 +56,41 @@ def showcase():
     plt.show()
 
 def double_gaussian(x, params):
-    (c1, mu1, sigma1, c2, mu2, sigma2, off) = params
+    (c1, mu1, sigma1, c2, mu2, sigma2) = params
     res =   c1 * np.exp( - (x - mu1)**2.0 / (2.0 * sigma1**2.0) ) \
-          + c2 * np.exp( - (x - mu2)**2.0 / (2.0 * sigma2**2.0) ) \
-          + off
+          + c2 * np.exp( - (x - mu2)**2.0 / (2.0 * sigma2**2.0) ) 
     return res
 
-def fit_gausians():
+def double_lorentzian(x, params):
+    (c1, pos1, gm1, c2, pos2, gm2) = params
+    l1 = c1 * 1./(gm1 * np.pi) / (1 + (x - pos1)**2)
+    l2 = c2 * 1./(gm2 * np.pi) / (1 + (x - pos2)**2)
+    res = l1 + l2
+
+    return res
+
+def fit_functions():
     path = 'data/ARPES0001.txt'
     arpes = read_arpes(path)
     data = arpes['data']
 
-    row = data[300]
+    row = data[400]
     x = np.arange(len(row))
 
     def double_gaussian_fit(params):
         fit = double_gaussian(x, params )
         return (fit - row)
 
-    fit = so.least_squares(double_gaussian_fit, [100.0, 13.0, 1.0, 100.0, 123.0, 1.0, 10])
+    def double_lorentz_fit(params):
+        fit = double_gaussian(x, params )
+        return (fit - row)
+
+    score = so.least_squares(double_lorentz_fit, [100.0, 13.0, 1.0, 100.0, 123.0, 1.0])
 
     # return fit
 
     plt.plot(x, row)
-    plt.plot(x, double_gaussian(x, fit.x), c='r')
+    plt.plot(x, double_gaussian(x, score.x), c='r')
     plt.show()
 
 if __name__ == '__main__':
