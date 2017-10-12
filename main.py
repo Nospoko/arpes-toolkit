@@ -1,5 +1,6 @@
 import numpy as np
 import igor.igorpy as igor
+from scipy import optimize as so
 from matplotlib import pyplot as plt
 
 def read_arpes(path):
@@ -30,20 +31,55 @@ def read_arpes(path):
             row = [np.float(val) for val in row]
             data.append(row)
 
+    # Convert numeric data properly
     results['data'] = np.array(data)
+    ax0 = [float(val) for val in results[queries[0]].split(' ')]
+    ax1 = [float(val) for val in results[queries[1]].split(' ')]
+    results['ax0'] = np.array(ax0)
+    results['ax1'] = np.array(ax1)
 
     return results
 
 def showcase():
-    path = 'data/ARPES0001.pxt'
-    data = igor.load(path)
+    path = 'data/ARPES0001.txt'
+    arpes = read_arpes(path)
 
-    ax0 = data.children[0].axis[0]
-    ax1 = data.children[0].axis[1]
+    data = arpes['data']
+    ax0 = arpes['ax0']
+    ax1 = arpes['ax1']
 
-    arpes = data.children[0].data
+    ax0 = 16.89 - ax0
 
-    plt.imshow(arpes)
+    extent = [ax1[0], ax1[-1], ax0[-1], ax0[0]]
+
+    plt.imshow(data, extent = extent, aspect = 'auto')
+    plt.show()
+
+def double_gaussian(x, params):
+    (c1, mu1, sigma1, c2, mu2, sigma2, off) = params
+    res =   c1 * np.exp( - (x - mu1)**2.0 / (2.0 * sigma1**2.0) ) \
+          + c2 * np.exp( - (x - mu2)**2.0 / (2.0 * sigma2**2.0) ) \
+          + off
+    return res
+
+def fit_gausians():
+    path = 'data/ARPES0001.txt'
+    arpes = read_arpes(path)
+    data = arpes['data']
+
+    row = data[300]
+    x = np.arange(len(row))
+
+    def double_gaussian_fit(params):
+        fit = double_gaussian(x, params )
+        return (fit - row)
+
+    fit = so.least_squares(double_gaussian_fit, [100.0, 13.0, 1.0, 100.0, 123.0, 1.0, 10])
+
+    # return fit
+
+    plt.plot(x, row)
+    plt.plot(x, double_gaussian(x, fit.x), c='r')
     plt.show()
 
 if __name__ == '__main__':
