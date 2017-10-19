@@ -61,10 +61,22 @@ def double_gaussian(x, params):
           + c2 * np.exp( - (x - mu2)**2.0 / (2.0 * sigma2**2.0) ) 
     return res
 
+def lorentzian(x, params):
+    y0, A, w, xc = params
+    res = y0 + (2*A / np.pi) * w / (4 * (x - xc) ** 2 + w ** 2)
+    # c1, pos1, gm1 = params
+    # res = c1 * 1./(gm1 * np.pi) / (1 + (x - pos1)**2)
+
+    return res
+
 def double_lorentzian(x, params):
-    (c1, pos1, gm1, c2, pos2, gm2) = params
-    l1 = c1 * 1./(gm1 * np.pi) / (1 + (x - pos1)**2)
-    l2 = c2 * 1./(gm2 * np.pi) / (1 + (x - pos2)**2)
+    y01, A1, w1, xc1, y02, A2, w2, xc2 = params
+    params1 = y01, A1, w1, xc1
+    params2 = y02, A2, w2, xc2
+    # (c1, pos1, gm1, c2, pos2, gm2, off) = params
+    l1 = lorentzian(x, params1)
+    l2 = lorentzian(x, params2)
+    
     res = l1 + l2
 
     return res
@@ -74,23 +86,28 @@ def fit_functions():
     arpes = read_arpes(path)
     data = arpes['data']
 
-    row = data[400]
+    row = data[450][:-1]
     x = np.arange(len(row))
+    x = arpes['ax1']
 
-    def double_gaussian_fit(params):
-        fit = double_gaussian(x, params )
-        return (fit - row)
+    # def double_gaussian_fit(params):
+    #     fit = double_gaussian(x, params )
+    #     return (fit - row)
+    #
+    # score = so.least_squares(double_gaussian_fit, [1000.0, 13.0, 1.0, 1000.0, 1.0, 1.0])
 
     def double_lorentz_fit(params):
-        fit = double_gaussian(x, params )
+        fit = double_lorentzian(x, params)
         return (fit - row)
 
-    score = so.least_squares(double_lorentz_fit, [100.0, 13.0, 1.0, 100.0, 123.0, 1.0])
+    params1 = 0, 8000, 10, -5
+    params2 = 0, 8000, 10, 5
+    params = params1 + params2
 
-    # return fit
+    score = so.least_squares(double_lorentz_fit, params)
 
     plt.plot(x, row)
-    plt.plot(x, double_gaussian(x, score.x), c='r')
+    plt.plot(x, double_lorentzian(x, score.x), c='r')
     plt.show()
 
 if __name__ == '__main__':
