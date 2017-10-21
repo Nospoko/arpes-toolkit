@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 from scipy import optimize as so
 from matplotlib import pyplot as plt
 
@@ -44,31 +45,6 @@ def transform_angle(angle, Ekin):
     k /= 1e10
 
     return k
-
-def fit_function(arpes, it):
-    data = arpes['data']
-
-    # There is a discrepency in the number of samples
-    Ekins = arpes['ax0']
-    Ekin = Ekins[it]
-    Eb = 16.89 - arpes['ax0']
-
-    energy = Eb[it]
-    angle = arpes['ax1']
-
-    row = data[it][:-1]
-    k = transform_angle(angle, Ekin)
-
-    def lorentz_fit(params):
-        fit = lorentzian(k, params)
-        return (fit - row)
-
-    # params = y0, A, w, xc
-    params = 0, 1000, 1, -0.1
-
-    score = so.least_squares(lorentz_fit, params)
-
-    return k, score
 
 def fit_functions(arpes, it, show = False):
     data = arpes['data']
@@ -117,3 +93,74 @@ def fit_functions(arpes, it, show = False):
         plt.show()
 
     return score
+
+def fit_function(arpes, it):
+    data = arpes['data']
+
+    # There is a discrepency in the number of samples
+    Ekins = arpes['ax0']
+    Ekin = Ekins[it]
+    Eb = 16.89 - arpes['ax0']
+
+    energy = Eb[it]
+    angle = arpes['ax1']
+
+    row = data[it][:-1]
+    k = transform_angle(angle, Ekin)
+
+    def lorentz_fit(params):
+        fit = lorentzian(k, params)
+        return (fit - row)
+
+    # params = y0, A, w, xc
+    params = 0, 1000, 1, -0.1
+
+    bounds = [[-np.inf, 10, -np.inf, -np.inf],
+              [np.inf, 10000, np.inf, np.inf]]
+    score = so.least_squares(lorentz_fit, params, bounds = bounds)
+
+    return k, score
+
+def fit_arpes(k, arpes_row):
+    # Function to actually fit
+    def lorentz_fit(params):
+        fit = lorentzian(k, params)
+        return (fit - arpes_row)
+
+    # params = y0, A, w, xc
+    params = 0, 1000, 1, -0.1
+    bounds = [[-np.inf, 10, -np.inf, -np.inf],
+              [np.inf, 10000, np.inf, np.inf]]
+    score = so.least_squares(lorentz_fit, params, bounds = bounds)
+
+    return score
+
+def analyse_arpes(arpes, Eb_span = [0.25, 0.5]):
+    # Prepare energy axis
+    Ekins = arpes['ax0']
+    Eb = 16.89 - arpes['ax0']
+
+    angle = arpes['ax1']
+
+    # Select the range
+    Eb_min, Eb_max = Eb_span
+    ids = (Eb > Eb_min) & (Eb < Eb_max)
+    ids = np.where(ids)[0]
+
+    scores = []
+    for it in ids:
+        Ekin = Ekins[it]
+        k = transform_angle(angle, Ekin)
+        arpes_row = arpes['data'][it][:-1]
+	score = fit_arpes(k, arpes_row)
+	scores.append(score)
+
+    # Extract the lorentzian width parameter
+    w1 = []
+    for score in scores:
+        w1.append(score.x[2])
+
+    # And the corresponding energy values
+    energies = Eb[ids]
+
+    return energies, w1

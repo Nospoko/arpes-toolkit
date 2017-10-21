@@ -1,4 +1,16 @@
 import numpy as np
+from glob import glob
+from matplotlib import pyplot as plt
+
+def get_paths():
+    directories = ['I=0', 'I=40', 'I=55']
+    paths = {}
+
+    for folder in directories:
+        query = 'data/' + folder + '/*'
+        paths[folder] = glob(query)   
+
+    return paths
 
 def read_arpes(path):
     with open(path) as fin:
@@ -36,5 +48,29 @@ def read_arpes(path):
     results['ax1'] = np.array(ax1)
 
     return results
+
+def to_show(arpes):
+    data = arpes['data']
+    ax0 = arpes['ax0']
+    ax1 = arpes['ax1']
+    
+    # TODO Is this a forever-constant?
+    ax0 = 16.89 - ax0
+    extent = [ax1[0], ax1[-1], ax0[-1], ax0[0]]
+
+    return data, extent
+
+def show_arpes(arpes):
+    data = arpes['data']
+    ax0 = arpes['ax0']
+    ax1 = arpes['ax1']
+    
+    # TODO Is this a forever-constant?
+    ax0 = 16.89 - ax0
+    extent = [ax1[0], ax1[-1], ax0[-1], ax0[0]]
+    
+    plt.imshow(data, extent = extent, aspect = 'auto')
+
+    plt.show()
 
 
